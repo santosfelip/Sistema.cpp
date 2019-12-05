@@ -36,14 +36,16 @@ Cartao::Cartao(double fatura, double limite_credito, int dia_vencimento)
     this->fatura = 0;
     this->limite_credito = limite_credito;
 }
-Cartao::Cartao(){}
+Cartao::Cartao(){
+    this->fatura = 0;
+}
 Cartao::~Cartao()
 {
 }
 
 void Cartao::setFatura(double total)
 {
-    this->fatura += fatura;
+    this->fatura = this->fatura + total;
 }
 double Cartao::getfatura()
 {
@@ -75,10 +77,24 @@ class Cliente
         void setCodigo(int codigo);
         int getCodigo();
         Cliente cadastrarCliente();
+        void comprar(double valor);
 
         Cartao setCartao(Cartao cartao);
         Cartao getCartao();
 };
+
+void Cliente::comprar(double valor)
+{
+    if(this->cartao.getLimite_credito() - valor < 0)
+    {
+        cout << "Limite indisponível no momento"<<endl;
+    }else
+    {
+        this->cartao.setLimite_credito(this->cartao.getLimite_credito()-valor);
+        this->cartao.setFatura(valor);
+    }
+    
+}
 Cliente::Cliente(string nome, int codigo, Cartao cartao)
 {
     this->nome = nome;
@@ -133,10 +149,15 @@ public:
     double getPreco();
     string getNome();
     void tirarEstoque(int qtd);
+    void inserir(int qtd);
     Produto cadastrarProduto();
     int getCodigo();
+    int getQtd_estoque();
 };
-
+void Produto::inserir(int qtd)
+{
+    this->qtd_estoque = this->qtd_estoque + qtd;
+}
 int Produto::getCodigo()
 {
     return this->codigo;
@@ -144,6 +165,7 @@ int Produto::getCodigo()
 
 Produto::Produto()
 {
+    this->qtd_estoque = 0;
 }
 Produto::Produto(string nome, double preco, int qtd, int codigo)
 {
@@ -172,8 +194,10 @@ string Produto::getNome()
 {
     return this->nome;
 }
-
-
+int Produto::getQtd_estoque()
+{
+    return this->qtd_estoque;
+}
 
 class Compra
 {
@@ -182,17 +206,19 @@ private:
     int codigo_cliente;
     map <int,Produto> produtos;
     double total_pagar;
+    Cliente cliente;
 public:
     Compra();
     ~Compra();
     Compra(string nome, int codigo_cliente, map<int,Produto> Produto);
     double getTotal_pagar();
-    void calcularTotal();
-    Compra realizarVenda(vector<Cliente> clientes, vector<Produto> produtos);
+    void calcularTotal(int qtd, double preco);
+    Compra realizarVenda();
 };
 
 Compra::Compra()
 {
+    this->total_pagar = 0;
 }
 
 Compra::~Compra()
@@ -210,31 +236,37 @@ double Compra::getTotal_pagar()
 {
     return this->total_pagar;
 }
-void Compra::calcularTotal()
+void Compra::calcularTotal(int qtd, double preco)
 {
-    for (map<int,Produto>::iterator it=this->produtos.begin(); it!=this->produtos.end(); ++it)
-    {
-        this->total_pagar += it->first * it->second.getPreco();
-    }
+    this->total_pagar += qtd * preco;
+    cout << this->total_pagar;
 }
 
 
 
 string buscarCliente(int codigo, vector<Cliente> clientes_cadastrados);
-Produto buscarProduto(int codigo, vector<Produto> produtos);
+int buscarProduto(int codigo, vector<Produto> produtos);
+int buscarIndiceCliente(int codigo, vector<Cliente> clientes_cadastrados);
+int buscarIndiceCliente(string nome, vector<Cliente> clientes_cadastrados);
+void relatorio();
+void atualizarEstoque();
+void pesquisarCliente();
+
+
 int main()
 {
     sistema();
     return 0;
 }
 
+
+vector <Cliente> vetor_clientes;
+vector <Produto> vetor_produtos;
+vector <Compra> vetor_compras;
+
 void sistema() {
     int condicao = 1;
     string scan;
-
-    vector <Cliente> vetor_clientes;
-    vector <Produto> vetor_produtos;
-    vector <Compra> vetor_compras;
 
     Cliente cliente;
     Produto produto;
@@ -265,24 +297,21 @@ void sistema() {
                 {
                     case '1':
                         vetor_clientes.push_back(cliente.cadastrarCliente());
-                        cout << vetor_clientes[0].getNome();
                         break;
                     case '2':
                         vetor_produtos.push_back(produto.cadastrarProduto());
-                        cout << vetor_produtos[0].getNome();
                         break;
                     case '3':
-                        vetor_compras.push_back(compra.realizarVenda(vetor_clientes,vetor_produtos));
-                        cout << vetor_compras[0].getTotal_pagar();
+                        vetor_compras.push_back(compra.realizarVenda());
                         break;
                     case '4':
-                        cout << "Hello - 4"<<endl;
+                        atualizarEstoque();
                         break;
                     case '5':
-                        cout << "Hello - 5"<<endl;
+                        pesquisarCliente();
                         break;
                     case '6':
-                        cout << "Hello - 6"<<endl;
+                        relatorio();
                         break;
                     case '0':
                         cout << "\n=========*Fim do Sistema*========="<<endl;
@@ -297,6 +326,130 @@ void sistema() {
                 }
             }
         }
+    }
+}
+
+void pesquisarCliente()
+{
+    int op;
+    int indice_cliente,codigo;
+    string nome;
+
+    cout << "Digite 1 para pesquisar o cliente por nome"<<endl;
+    cout << "ou 2 para pesquisar clientes por codigo"<<endl;
+    cin >> op;
+
+    switch (op)
+    {
+    case 1:
+        cout << "Digite o nome que deseja pesquisar: "<<endl;
+        cin >> nome;
+        indice_cliente = buscarIndiceCliente(nome,vetor_clientes);
+        if(indice_cliente!=-1)
+        {
+            cout << "---------------------\n"<<endl;
+            cout<<"Cliente numero: "<<indice_cliente+1<<endl;
+            cout << "Nome: "<<vetor_clientes[indice_cliente].getNome()<<endl;
+            cout << "Codigo: " << vetor_clientes[indice_cliente].getCodigo()<<endl;
+            cout << "Fatura: " << vetor_clientes[indice_cliente].getCartao().getfatura()<<endl;
+            cout<<"-----------------------\n";
+            
+        }else
+        {
+            cout << "Nenhumm Cliente encontrado! =("<<endl;
+        }
+        break;
+    case 2:
+        cout << "Digite o codigo que deseja pesquisar: "<<endl;
+        cin >> codigo;
+        indice_cliente = buscarIndiceCliente(codigo, vetor_clientes);
+        if(indice_cliente!=-1)
+        {
+            cout << "---------------------\n"<<endl;
+            cout<<"Cliente numero: "<<indice_cliente+1<<endl;
+            cout << "Nome: "<<vetor_clientes[indice_cliente].getNome()<<endl;
+            cout << "Codigo: " << vetor_clientes[indice_cliente].getCodigo()<<endl;
+            cout << "Fatura: " << vetor_clientes[indice_cliente].getCartao().getfatura()<<endl;
+            cout<<"-----------------------\n";
+        }else
+        {
+            cout << "Nenhumm Cliente encontrado! =("<<endl;
+        }
+        
+        break;
+        default:
+            cout << "Opcao Invalida"<<endl;
+        break;
+    }
+    //limpa o buffer de memória
+    flush_in();
+}
+
+
+void atualizarEstoque()
+{
+    int op;
+    bool condicao = true;
+    int codigo, indice_produto,quantidade;
+    while(condicao){
+        cout << "Digite 1 para Inserir, 2 para remover ou 0 para sair do sistema"<<endl;
+        cin >> op;
+
+        if(op==0){
+            condicao = false;
+            break;
+        }
+
+        cout << "Digite o codigo do produto que deseja atualizar o estoque: "<<endl;
+        cin >> codigo;
+        indice_produto = buscarProduto(codigo,vetor_produtos);
+
+        if(indice_produto!=-1){
+            switch (op)
+            {
+            case 1:
+                cout << "Digite a quantidade que deseja inserir: "<<endl;
+                cin >> quantidade;
+                vetor_produtos[indice_produto].inserir(quantidade);
+                break;
+            case 2:
+                cout << "Digite a quantidade que deseja remover: "<<endl;
+                cin >> quantidade;
+                vetor_produtos[indice_produto].tirarEstoque(quantidade);
+                break;
+            default:
+                cout << "Opcao invalida!"<<endl;
+                break;
+            }
+        }
+    }
+    //limpa o buffer de memória
+    flush_in();
+}
+void relatorio()
+{
+    cout<<"\nClientes Cadastrados: "<<endl;
+    for (int i = 0; i < vetor_clientes.size(); i++) {
+        cout << "---------------------\n"<<endl;
+        cout<<"Cliente numero: "<<i+1<<endl;
+        cout << "Nome: "<<vetor_clientes[i].getNome()<<endl;
+        cout << "Codigo: " << vetor_clientes[i].getCodigo()<<endl;
+        cout << "Fatura: " << vetor_clientes[i].getCartao().getfatura()<<endl;
+        cout << "Limite disponivel no Cartao: " << vetor_clientes[i].getCartao().getLimite_credito()<<endl;
+        cout<<"-----------------------\n";
+    }
+
+    cout << "\nProdutos Cadastrados: "<<endl;
+    for (int i=0; i < vetor_produtos.size(); i++)
+    {
+        cout << "---------------------\n"<<endl;
+        cout<<"Produto numero: "<<i+1<<endl;
+        cout << "Nome: "<<vetor_produtos[i].getNome()<<endl;
+        cout << "Codigo: "<<vetor_produtos[i].getCodigo()<<endl;
+        cout << "Quantidade no estoque: " << vetor_produtos[i].getQtd_estoque()<<endl;
+        cout << "Preco: " << vetor_produtos[i].getPreco()<<endl;
+        cout<<"-----------------------\n";
+            
     }
 }
 
@@ -316,7 +469,7 @@ Cliente Cliente::cadastrarCliente(){
     cin >> codigo;
     cout << "Digite o limite atribuido pro cartao na funcao credito: "<<endl;
     cin >> limite_credito;
-    cout<<"Difite o dia do vencimento da fatura: "<<endl;
+    cout<<"Digite o dia do vencimento da fatura: "<<endl;
     cin >> dia_venciento;
 
     Cartao cartao(0, limite_credito,  dia_venciento);
@@ -344,50 +497,82 @@ Produto Produto::cadastrarProduto(){
     cout << "Digite a quantida no estoque: "<<endl;
     cin >> qtd_estoq;
 
-    Produto produto(nome,preco,qtd_estoque,cd);
-    
+    Produto produto(nome,preco,qtd_estoq,cd);
+    cout << produto.getQtd_estoque();
     //limpa o buffer de memória
     flush_in();
     return produto;
 
 }
 
-Compra Compra::realizarVenda(vector<Cliente> clientes, vector<Produto> produtos){
-    //Compra(string nome, int codigo_cliente, map<int,Produto> Produto);
+Compra Compra::realizarVenda(){
     string nome;
-    int codigo, cdproduto;
+    int codigo, cdproduto,quantidade,op,indice_cliente,indice_produto;
+    double valor;
     Produto produto;
     map<int,Produto> produtos_da_venda;
+    bool condicao = true;
 
     cout << "\n=========Tela de Cadastro de Vendas:============"<<endl;
-    while(true){
-        cout<<"Digite o codigo do Cliente: "<<endl;
+    while(condicao){
+        cout<<"Digite o codigo do Cliente ou 0(zero pra voltar ao menu inicial): "<<endl;
         cin >> codigo;
-
-        nome = buscarCliente(codigo,clientes);
+        if(codigo==0)condicao = false;
+        
+        nome = buscarCliente(codigo,vetor_clientes);
 
         if(nome.empty()) {
             cout << "Cliente não encontrado! "<<endl;
         }else{
+            indice_cliente = buscarIndiceCliente(codigo,vetor_clientes);
             cout << "Digite o codigo do Produto: "<<endl;
             cin >> cdproduto;
-            produto = buscarProduto(codigo,produtos);
-            if(produto.getNome().empty())
+            indice_produto = buscarProduto(cdproduto,vetor_produtos);
+            if(indice_cliente==-1)
             {
                 cout << "Produto não encontrado! "<<endl;
             }else
             {
-                produtos_da_venda.insert(pair<int,Produto>(cdproduto,produto));
-                Compra compra(nome,codigo,produtos_da_venda);
-                return compra;
+                cout << "Digite a quantidade Comprada: "<<endl;
+                cin >> quantidade;
+                if(quantidade<0)  cout << "Inválida"<<endl;
+                else
+                if ((vetor_produtos[indice_produto].getQtd_estoque() - quantidade)<0)
+                {
+                    cout << "Quantidade maior que o estoque"<<endl;
+                }else{
+
+                    cout << "Digite 1 - para Pagamento a vista(dinheiro ou débito)"<<endl;
+                    cout << "ou 2 - para Pagamento com o cartao da loja"<<endl;
+                    cin >> op;
+                    produtos_da_venda.insert(pair<int,Produto>(quantidade,vetor_produtos[indice_produto]));
+                    Compra compra(nome,codigo,produtos_da_venda);
+                    switch (op)
+                    {
+                    case 1:
+                        vetor_produtos[indice_produto].tirarEstoque(quantidade);
+                        break;
+                    case 2:
+                        vetor_produtos[indice_produto].tirarEstoque(quantidade);
+                        vetor_clientes[indice_cliente].comprar(quantidade*vetor_produtos[indice_produto].getPreco());
+                        break;
+                    default:
+                        cout << "Opção Invalida!"<<endl;
+                        break;
+                    }
+
+                    //limpa o buffer de memória
+                    flush_in();
+                    return compra;
+                }
             }
             
         }
     }
     //limpa o buffer de memória
     flush_in();
-    Compra compra();
-    return compra();
+    Compra compra2;
+    return compra2;
 
 }
 
@@ -412,16 +597,38 @@ string buscarCliente(int codigo, vector<Cliente> clientes_cadastrados)
     return "";
 }
 
-Produto buscarProduto(int codigo, vector<Produto> produtos){
+int buscarIndiceCliente(int codigo, vector<Cliente> clientes_cadastrados)
+{
+    for (int i = 0; i < clientes_cadastrados.size(); i++) {
+        if(clientes_cadastrados[i].getCodigo() == codigo){
+            return i;
+        }
+    }
+
+
+    return -1;
+}
+//polimorfismo de sobrecarga
+int buscarIndiceCliente(string nome, vector<Cliente> clientes_cadastrados)
+{
+    for (int i = 0; i < clientes_cadastrados.size(); i++) {
+        if(clientes_cadastrados[i].getNome().compare(nome)){
+            return i;
+        }
+    }
+
+
+    return -1;
+}
+int buscarProduto(int codigo, vector<Produto> produtos){
     for (int i=0; i < produtos.size(); i++)
     {
-        if(codigo==produtos[i].getCodigo() == codigo)
+        if(produtos[i].getCodigo() == codigo)
         {
-            return produtos[i];
+            return i;
         }
             
     }
 
-    Produto produto;
-    return produto;
+    return -1;
 }
